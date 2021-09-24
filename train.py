@@ -91,14 +91,6 @@ if __name__ == '__main__':
     weight_decay=opt.weight_decay
   )
 
-  ## learning rate decay
-  scheduler = torch.optim.lr_scheduler.StepLR(
-    optimizer, 
-    step_size=opt.lr_decay_step,
-    gamma=opt.lr_decay_factor,
-    last_epoch=opt.resume_epoch-1
-  )
-
   ## mixed precision
   scaler = torch.cuda.amp.GradScaler(enabled=opt.use_amp)
 
@@ -107,6 +99,14 @@ if __name__ == '__main__':
   ## ---------------------------------------------------------------------------
 
   for epoch in range(opt.resume_epoch, opt.epochs):
+
+    ## === adjust learning rate ===
+    lr = opt.lr * (opt.lr_decay_factor ** (epoch // opt.lr_decay_step))
+    for param_group in optimizer.param_groups:
+      param_group['lr'] = lr
+
+    print("Epoch {} lr: {:.2e}".format(epoch+1, lr))
+
 
     ##  === train ===
     net.train()
@@ -157,6 +157,3 @@ if __name__ == '__main__':
     if (epoch + 1) % opt.checkpoint_interval == 0:
       filename = os.path.join(opt.checkpoint_dir, utils.checkpoint_name(epoch+1))
       torch.save(net.state_dict(), filename)
-
-    ## === adjust learning rate ===
-    scheduler.step()
