@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import torchvision.transforms.functional as TF
 import torch
 from torch.utils.data import Dataset
 
@@ -14,6 +16,7 @@ class TrainDataset(Dataset):
     self.label_dir = label_dir
     self.image_list = sorted(utils.get_names(image_dir))
     self.label_list = sorted(utils.get_names(label_dir))
+    self.rng = np.random.default_rng()
     ## check filenames are consistent and label extensions are supported
     for i, i_name in enumerate(self.image_list):
       i_pre, _ = i_name.split('.')
@@ -37,10 +40,46 @@ class TrainDataset(Dataset):
     else:
       assert 0, "Extension not supported: {}".format(ext)
 
-    image, label = utils.resize_for_train(image, label)
     image = utils.image_to_tensor(image)
     label = utils.label_to_tensor(label)
+    image, label = self.preprocess(image, label)
     return image, label
+
+  def preprocess(self, image, label, target=512):
+    '''Dataset augmentation with small rotations, scalings, and jitterings.'''
+    h, w = label.shape
+    label = label.unsqueeze(0)  # needed for many of these operations
+
+    ## do `utils.resize_for_train`
+    scale_factor = max(h, w) / float(target)
+    new_w = (int(w / scale_factor) // 16) * 16
+    new_h = (int(h / scale_factor) // 16) * 16
+    image = TF.resize(image, (new_h, new_w))
+    label = TF.resize(label, (new_h, new_w), interpolation=TF.InterpolationMode.NEAREST)
+
+    ## center pad
+    l_pad, t_pad = (target-new_w)//2, (target-new_h)//2
+    r_pad, b_pad = target-l_pad-new_w, target-t_pad-new_h
+    image = TF.pad(image, (l_pad, t_pad, r_pad, b_pad))
+    label = TF.pad(label, (l_pad, t_pad, r_pad, b_pad), fill=255)
+
+    ## apply random affine transformation
+    angle = self.rng.uniform(-5, 5)   # max 5 degrees either way
+    scale = self.rng.uniform(1, 2)    # max x2 zoom
+    x_max_trans = max(0, int(new_w*scale - target)) // 2
+    y_max_trans = max(0, int(new_h*scale - target)) // 2
+    x_trans = self.rng.integers(-x_max_trans, x_max_trans, endpoint=True)
+    y_trans = self.rng.integers(-y_max_trans, y_max_trans, endpoint=True)
+    image = TF.affine(image, angle, (x_trans, y_trans), scale, 0)
+    label = TF.affine(label, angle, (x_trans, y_trans), scale, 0)
+
+    ## adjust brightness and hue
+    bright = self.rng.uniform(0.8, 1.2)
+    hue = self.rng.uniform(-0.05, 0.05)
+    image = TF.adjust_brightness(image, bright)
+    image = TF.adjust_hue(image, hue)
+
+    return image, label.squeeze()
 
 
 ## --- for evaluation ----------------------------------------------------------
