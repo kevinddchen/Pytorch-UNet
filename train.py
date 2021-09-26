@@ -115,6 +115,8 @@ if __name__ == '__main__':
       label = label.cuda()
       optimizer.zero_grad(set_to_none=True)
 
+      image, label = utils.preprocess(image, label)
+
       with torch.cuda.amp.autocast(enabled=opt.use_amp):
         out = net(image)
         loss = CrossEntropyLoss(out, label)

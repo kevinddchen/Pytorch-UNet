@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import cv2 as cv
+import torchvision.transforms.functional as TF
 import scipy.io # to read .mat files
 from PIL import Image # to read image files
 
@@ -170,10 +171,12 @@ def resize_for_train(image, label, target=512):
   scale_factor = max(h, w) / float(target)
   new_w = (int(w / scale_factor) // 16) * 16
   new_h = (int(h / scale_factor) // 16) * 16
+  l_pad, t_pad = (target-new_w)//2, (target-new_h)//2
+  r_pad, b_pad = target-l_pad-new_w, target-t_pad-new_h
   new_image = cv.resize(image, (new_w, new_h), None, 0, 0, cv.INTER_LINEAR)
-  new_image = np.pad(new_image, ((0, target-new_h), (0, target-new_w), (0, 0)), 'constant', constant_values=0)
+  new_image = np.pad(new_image, ((t_pad, b_pad), (l_pad, r_pad), (0, 0)), 'constant', constant_values=0)
   new_label = cv.resize(label, (new_w, new_h), None, 0, 0, cv.INTER_NEAREST)
-  new_label = np.pad(new_label, ((0, target-new_h), (0, target-new_w)), 'constant', constant_values=255)
+  new_label = np.pad(new_label, ((t_pad, b_pad), (l_pad, r_pad)), 'constant', constant_values=255)
   return new_image, new_label
 
 
@@ -194,6 +197,41 @@ def resize_for_eval(image, target=512):
   new_h = (int(h / scale_factor) // 16) * 16
   new_image = cv.resize(image, (new_w, new_h), None, 0, 0, cv.INTER_LINEAR)
   return new_image
+
+
+## --- Dataset augmentation ----------------------------------------------------
+
+
+def preprocess(image, label):
+    '''Dataset augmentation with small rotations, scalings, and jitterings.
+    
+    Args:
+      image (tensor): RBG image, scaled to the range [0, 1]. Shape=(N, 3, D, D)
+      label (tensor): Class label for each pixel. Shape=(N, D, D)
+      
+    Returns:
+      (tensor): New image
+      (tensor): New label
+    '''
+    D = image.shape[-1]
+    ## generate random parameters
+    angle = np.random.uniform(-5, 5)   # max 5 degrees in either direction
+    scale = np.random.uniform(1, 2)    # max x2 zoom
+    max_trans = D * int(scale - 1) // 2
+    x_trans = np.random.randint(-max_trans, max_trans+1)
+    y_trans = np.random.randint(-max_trans, max_trans+1)
+    bright = np.random.uniform(.8, 1.2)
+    hue = np.random.uniform(-.05, .05)
+
+    ## apply affine transformation
+    image = TF.affine(image, angle, (x_trans, y_trans), scale, 0)
+    label = TF.affine(label, angle, (x_trans, y_trans), scale, 0)
+
+    ## adjust brightness and hue
+    image = TF.adjust_brightness(image, bright)
+    image = TF.adjust_hue(image, hue)
+
+    return image, label
 
 
 ## --- Misc --------------------------------------------------------------------
