@@ -1,7 +1,6 @@
 import os
 import datetime
 import argparse
-import cv2 as cv
 import torch
 
 from model import UNet
@@ -56,8 +55,8 @@ if __name__ == '__main__':
       label = torch.argmax(out, 1)
 
     ## save label as image
+    ## TODO: save label in original dimensions as palettised png, or other convenient form
     label = label[0].cpu().numpy()
-    label = cv.resize(label, (image.shape[3], image.shape[2]), None, 0, 0, cv.INTER_NEAREST)
     label_img = utils.label_to_image(label)
     filename = os.path.join(opt.output_label_dir, name[0]+'.png')
     utils.save_image(filename, label_img)

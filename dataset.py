@@ -36,9 +36,9 @@ class TrainDataset(Dataset):
     else:
       assert 0, "Extension not supported: {}".format(ext)
 
-    image, label = utils.resize_for_train(image, label)
     image = utils.image_to_tensor(image)
     label = utils.label_to_tensor(label)
+    image, label = utils.resize_for_train(image, label)
     return image, label
 
 
@@ -56,7 +56,7 @@ class EvalDataset(Dataset):
   def __getitem__(self, idx):
     image_path = os.path.join(self.image_dir, self.image_list[idx])
     image = utils.get_image(image_path)
-    image = utils.resize_for_eval(image)
     image = utils.image_to_tensor(image)
+    image = utils.resize_for_eval(image)
     name = self.image_list[idx].split('.')[0]   # remove extension
     return image, name

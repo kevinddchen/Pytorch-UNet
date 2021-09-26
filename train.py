@@ -1,7 +1,6 @@
 import os
 import datetime
 import argparse
-import cv2 as cv
 import torch
 
 from model import UNet, init_weights

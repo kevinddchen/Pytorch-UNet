@@ -1,7 +1,6 @@
 import os
 import torch
 import numpy as np
-import cv2 as cv
 import torchvision.transforms.functional as TF
 import scipy.io # to read .mat files
 from PIL import Image # to read image files
@@ -19,9 +18,9 @@ def get_image(path):
   Returns:
     (array<np.uint8>): RGB image. Shape=(height, width, 3)
   '''
-  jpg = cv.imread(path)
-  jpg = cv.cvtColor(jpg, cv.COLOR_BGR2RGB)
-  return jpg
+  jpg = Image.open(path).convert('RGB')
+  arr = np.array(jpg)
+  return arr
 
 
 def get_label_mat(path):
@@ -52,15 +51,15 @@ def get_label_png(path):
   return arr
 
 
-def save_image(filename, image):
+def save_image(filename, arr):
   '''Save RGB image.
   
   Args:
-    image (array<np.uint8>): RGB image. Shape=(height, width, 3)
+    arr (array<np.uint8>): RGB image. Shape=(height, width, 3)
     filename (string): path to file
   '''
-  image = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-  cv.imwrite(filename, image)
+  image = Image.fromarray(arr)
+  image.save(filename)
 
 
 ## --- Conversions -------------------------------------------------------------
@@ -159,25 +158,27 @@ def resize_for_train(image, label, target=512):
   padding if necessary. Assumes that image and label have the same dimensions.
 
   Args:
-    image (array<np.uint8>): RGB image. Shape=(height, width, 3)
-    label (array<np.uint8>): Class label for each pixel. Shape=(height, width)
+    image (tensor): RGB image, as float in range [0, 1]. Shape=(3, height, width)
+    label (tensor): Class label for each pixel. Shape=(height, width)
     target: dimension of output image, in pixels
 
   Returns:
-    (array<np.uint8>): Resized image. Shape=(target, target, 3)
-    (array<np.uint8>): Resized label. Shape=(target, target)
+    (tensor): Resized RGB image. Shape=(3, target, target)
+    (tensor): Resized label. Shape=(target, target)
   '''
-  h, w, _ = image.shape
+  _, h, w = image.shape
+  label = label.unsqueeze(0)   # needed for TF functions
+
   scale_factor = max(h, w) / float(target)
   new_w = (int(w / scale_factor) // 16) * 16
   new_h = (int(h / scale_factor) // 16) * 16
   l_pad, t_pad = (target-new_w)//2, (target-new_h)//2
   r_pad, b_pad = target-l_pad-new_w, target-t_pad-new_h
-  new_image = cv.resize(image, (new_w, new_h), None, 0, 0, cv.INTER_LINEAR)
-  new_image = np.pad(new_image, ((t_pad, b_pad), (l_pad, r_pad), (0, 0)), 'constant', constant_values=0)
-  new_label = cv.resize(label, (new_w, new_h), None, 0, 0, cv.INTER_NEAREST)
-  new_label = np.pad(new_label, ((t_pad, b_pad), (l_pad, r_pad)), 'constant', constant_values=255)
-  return new_image, new_label
+  image = TF.resize(image, (new_h, new_w))
+  image = TF.pad(image, (l_pad, t_pad, r_pad, b_pad))
+  label = TF.resize(label, (new_h, new_w), interpolation=TF.InterpolationMode.NEAREST)
+  label = TF.pad(label, (l_pad, t_pad, r_pad, b_pad), fill=255)
+  return image, label.squeeze()
 
 
 def resize_for_eval(image, target=512):
@@ -185,18 +186,18 @@ def resize_for_eval(image, target=512):
   are divisible by 16. Aspect ratio will be preserved as best as possible.
 
   Args:
-    image (array<np.uint8>): RGB image. Shape=(height, width, 3)
+    image (tensor): RGB image, as float in range [0, 1]. Shape=(3, height, width)
     target: largest dimension of output image, in pixels
 
   Returns:
-    (array<np.uint8>): Resized RGB image. Shape=(new_height, new_width, 3)
+    (array<np.uint8>): Resized RGB image. Shape=(3, new_height, new_width)
   '''
-  h, w, _ = image.shape
+  _, h, w = image.shape
   scale_factor = max(h, w) / float(target)
   new_w = (int(w / scale_factor) // 16) * 16
   new_h = (int(h / scale_factor) // 16) * 16
-  new_image = cv.resize(image, (new_w, new_h), None, 0, 0, cv.INTER_LINEAR)
-  return new_image
+  image = TF.resize(image, (new_h, new_w))
+  return image
 
 
 ## --- Dataset augmentation ----------------------------------------------------
