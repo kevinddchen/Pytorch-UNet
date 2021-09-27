@@ -239,7 +239,7 @@ def preprocess(image, label):
 
 
 def get_names(path):
-  # read a folder, return all filenames
+  '''Read a folder, return all filenames.'''
   f = []
   for root, dirs, files in os.walk(path):
     f.extend(files)
@@ -247,10 +247,10 @@ def get_names(path):
 
 
 def sample_name(epoch, i):
-  # name for sample labels
+  '''Name for sample labels.'''
   return "epoch{}_{}.png".format(epoch, i)
 
 
 def checkpoint_name(epoch):
-  # name for checkpoint weights
+  '''Name for checkpoint weights.'''
   return "unet_epoch{}.pth".format(epoch)

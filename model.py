@@ -4,7 +4,10 @@ import torch.nn.init as init
 
 
 def init_weights(m):
-  ''' Initialize network weights. Uses He initialization. '''
+  ''' Initialize network weights. Uses He initialization. 
+  
+  Usage: `net.apply(init_weights)`
+  '''
   if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
     init.kaiming_normal_(m.weight, nonlinearity='relu')
 
@@ -24,16 +27,16 @@ class UNet(nn.Module):
   '''
   def __init__(self, N_in=3, N_out=21, L=64):
     super().__init__()
-    self.block1 = DoubleConv(     N_in,    L, (5, 3), padding='same')
-    self.block2 = DoubleConv(        L,  2*L, (3, 3), padding='same')
-    self.block3 = DoubleConv(      2*L,  4*L, (3, 3), padding='same')
-    self.block4 = DoubleConv(      4*L,  8*L, (3, 3), padding='same')
-    self.block5 = DoubleConv(      8*L,  8*L, (3, 3), padding='same')
-    self.block6 = DoubleConv(     16*L,  4*L, (3, 3), padding='same')
-    self.block7 = DoubleConv(      8*L,  2*L, (3, 3), padding='same')
-    self.block8 = DoubleConv(      4*L,    L, (3, 3), padding='same')
-    self.block9 = DoubleConv(      2*L,    L, (3, 3), padding='same')
-    self.out = nn.Conv2d(            L, N_out, 1)
+    self.block1 = DoubleConv(N_in,     L, (5, 3), padding='same')
+    self.block2 = DoubleConv(   L,   2*L, (3, 3), padding='same')
+    self.block3 = DoubleConv( 2*L,   4*L, (3, 3), padding='same')
+    self.block4 = DoubleConv( 4*L,   8*L, (3, 3), padding='same')
+    self.block5 = DoubleConv( 8*L,   8*L, (3, 3), padding='same')
+    self.block6 = DoubleConv(16*L,   4*L, (3, 3), padding='same')
+    self.block7 = DoubleConv( 8*L,   2*L, (3, 3), padding='same')
+    self.block8 = DoubleConv( 4*L,     L, (3, 3), padding='same')
+    self.block9 = DoubleConv( 2*L,     L, (3, 3), padding='same')
+    self.out = nn.Conv2d(       L, N_out, 1)
   
   def forward(self, x):
     x_1 = self.block1(x)

@@ -93,7 +93,7 @@ if __name__ == '__main__':
   ## mixed precision
   scaler = torch.cuda.amp.GradScaler(enabled=opt.use_amp)
 
-  timeEstimator = TimeEstimator((opt.epochs - opt.resume_epoch) * (len(trainloader) + len(valloader)))
+  timeEstimator = TimeEstimator((opt.epochs - opt.resume_epoch) * len(trainloader))
 
   ## ---------------------------------------------------------------------------
 
@@ -103,11 +103,11 @@ if __name__ == '__main__':
     lr = opt.lr * (opt.lr_decay_factor ** (epoch // opt.lr_decay_step))
     for param_group in optimizer.param_groups:
       param_group['lr'] = lr
-
     print("Epoch {} lr: {:.2e}".format(epoch+1, lr))
 
 
     ##  === train ===
+    timeEstimator.reset()
     net.train()
     for batch_i, (image, label) in enumerate(trainloader):
       image = image.cuda()
@@ -125,7 +125,7 @@ if __name__ == '__main__':
       scaler.update()
 
       delta_t, remaining_t = timeEstimator.update()
-      print("TRAIN | Epoch {}/{} | Batch {}/{} | Loss {:.3f} | {:.3f} sec | {} remaining".format(
+      print("TRAIN | Epoch {}/{} | Batch {}/{} | Loss {:.4f} | {:.2f} sec | {} remaining".format(
         epoch+1, opt.epochs, batch_i+1, len(trainloader), loss.item(), delta_t, datetime.timedelta(seconds=remaining_t)
       ))
     
@@ -148,9 +148,8 @@ if __name__ == '__main__':
         filename = os.path.join(opt.sample_dir, utils.sample_name(epoch+1, batch_i))
         utils.save_image(filename, pred_img)
 
-      delta_t, remaining_t = timeEstimator.update(count_toward_average=False)
-      print("VAL-- | Epoch {}/{} | Batch {}/{} | Loss {:.3f} | {:.3f} sec | {} remaining".format(
-        epoch+1, opt.epochs, batch_i+1, len(valloader), loss.item(), delta_t, datetime.timedelta(seconds=remaining_t)
+      print("VAL | Epoch {}/{} | Batch {}/{} | Loss {:.4f}".format(
+        epoch+1, opt.epochs, batch_i+1, len(valloader), loss.item()
       ))
     
 
@@ -158,3 +157,7 @@ if __name__ == '__main__':
     if (epoch + 1) % opt.checkpoint_interval == 0:
       filename = os.path.join(opt.checkpoint_dir, utils.checkpoint_name(epoch+1))
       torch.save(net.state_dict(), filename)
+
+
+  total_t = timeEstimator.total()
+  print("Total Elapsed Time: {}".format(datetime.timedelta(seconds=total_t)))

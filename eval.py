@@ -61,11 +61,11 @@ if __name__ == '__main__':
     filename = os.path.join(opt.output_label_dir, name[0]+'.png')
     utils.save_image(filename, label_img)
 
-    
     delta_t, remaining_t = timeEstimator.update()
-    print("EVAL-- | Batch {}/{} | {:.3f} sec | {} remaining".format(
-      batch_i+1, 
-      len(evalloader),
-      delta_t,
-      datetime.timedelta(seconds=remaining_t)
+    print("EVAL | Batch {}/{} | {:.2f} sec | {} remaining".format(
+      batch_i+1, len(evalloader), delta_t, datetime.timedelta(seconds=remaining_t)
     ))
+
+  
+  total_t = timeEstimator.total()
+  print("Total Elapsed Time: {}".format(datetime.timedelta(seconds=total_t)))
