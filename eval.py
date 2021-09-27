@@ -52,7 +52,8 @@ if __name__ == '__main__':
 
     with torch.no_grad():
       out = net(image)
-      label = torch.argmax(out, 1)
+    
+    label = out.argmax(1)
 
     ## save label as image
     ## TODO: save label in original dimensions as palettised png, or other convenient form

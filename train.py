@@ -5,6 +5,7 @@ import torch
 
 from model import UNet, init_weights
 from dataset import TrainDataset
+import metrics
 import utils
 from utils_time import TimeEstimator
 
@@ -128,9 +129,15 @@ if __name__ == '__main__':
       print("TRAIN | Epoch {}/{} | Batch {}/{} | Loss {:.4f} | {:.2f} sec | {} remaining".format(
         epoch+1, opt.epochs, batch_i+1, len(trainloader), loss.item(), delta_t, datetime.timedelta(seconds=remaining_t)
       ))
-    
+
 
     ## === validate ===
+
+    ## initialize metrics
+    mean_loss = metrics.Mean()
+    pixel_acc = metrics.PixelAccuracy()
+    meanIoU = metrics.MeanIoU()
+    
     net.eval()
     for batch_i, (image, label) in enumerate(valloader):
       image = image.cuda()
@@ -138,8 +145,13 @@ if __name__ == '__main__':
 
       with torch.no_grad():
         out = net(image)
-        pred = torch.argmax(out, 1)
         loss = CrossEntropyLoss(out, label)
+
+      ## update metrics
+      pred = out.argmax(1)
+      mean_loss.accumulate(loss.detach())
+      pixel_acc.accumulate(label, pred)
+      meanIoU.accumulate(label, pred)
 
       ## save label as image
       if batch_i < opt.sample_num:
@@ -151,6 +163,12 @@ if __name__ == '__main__':
       print("VAL | Epoch {}/{} | Batch {}/{} | Loss {:.4f}".format(
         epoch+1, opt.epochs, batch_i+1, len(valloader), loss.item()
       ))
+
+    
+    ## === print val metrics ===
+    print("METRIC | Epoch {}/{} | Mean Loss {:.4f} | Pixel Acc {:.4f} | Mean IoU {:.4f}".format(
+      epoch+1, opt.epochs, mean_loss.result().item(), pixel_acc.result().item(), meanIoU.result().item()
+    ))
     
 
     ## === save checkpoint ===
