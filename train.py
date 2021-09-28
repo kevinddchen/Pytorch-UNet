@@ -3,7 +3,7 @@ import datetime
 import argparse
 import torch
 
-from model import UNet, init_weights
+from model import UNet, init_weights, load_backbone
 from dataset import TrainDataset
 import metrics
 import utils
@@ -56,8 +56,9 @@ if __name__ == '__main__':
     pretrained_dict = torch.load(filename)
     net.load_state_dict(pretrained_dict)
   else:
-    print("Initializing random weights")
+    print("Initializing new weights")
     net.apply(init_weights)
+    load_backbone(net)
   net = net.cuda()
 
   ## load data
