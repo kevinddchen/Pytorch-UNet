@@ -150,9 +150,9 @@ if __name__ == '__main__':
 
       ## update metrics
       pred = out.argmax(1)
-      mean_loss.accumulate(loss.detach())
-      pixel_acc.accumulate(label, pred)
-      meanIoU.accumulate(label, pred)
+      mean_loss.accumulate(loss.detach().clone())
+      pixel_acc.accumulate(label.detach().clone(), pred.detach().clone())
+      meanIoU.accumulate(label.detach().clone(), pred.detach().clone())
 
       ## save label as image
       if batch_i < opt.sample_num:
