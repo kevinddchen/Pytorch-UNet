@@ -11,7 +11,7 @@ from utils_time import TimeEstimator
 if __name__ == '__main__':
   ## Parse arguments
   parser = argparse.ArgumentParser()
-  parser.add_argument('--pretrained_weights', '-w', type=str, required=True, help='path to pretrained model weights')
+  parser.add_argument('--pretrained_weights', type=str, default='pretrained/unet_epoch20.pth', help='path to pretrained model weights')
   parser.add_argument('--input_image_dir', type=str, default='eval/images', help='directory containing images to segment')
   parser.add_argument('--output_label_dir', type=str, default='eval/labels', help='directory to save segments')
   parser.add_argument('--num_workers', type=int, default=4, help='(only for gpu) number of cpu workers for DataLoader')
