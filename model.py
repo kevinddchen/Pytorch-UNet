@@ -35,6 +35,10 @@ def load_backbone(unet):
   for u, v in correspondence:
     unet_weights[u+'.weight'] = vgg_weights[v+'.weight']
     unet_weights[u+'.bias'] = vgg_weights[v+'.bias']
+  unet_weights['conv6.weight'] = vgg_weights['classifier.0.weight'].reshape(4096, 512, 7, 7)
+  unet_weights['conv6.bias'] = vgg_weights['classifier.0.bias']
+  unet_weights['conv7.weight'] = vgg_weights['classifier.3.weight'].reshape(4096, 4096, 1, 1)
+  unet_weights['conv7.bias'] = vgg_weights['classifier.3.bias']
   unet.load_state_dict(unet_weights)
 
 
@@ -59,40 +63,39 @@ class UNet(nn.Module):
     self.block3 = DoubleConv( 2*L,   4*L, (3, 3), padding='same')
     self.block4 = DoubleConv( 4*L,   8*L, (3, 3), padding='same')
     self.block5 = DoubleConv( 8*L,   8*L, (3, 3), padding='same')
-    self.block6 = DoubleConv(16*L,   4*L, (3, 3), padding='same')
-    self.block7 = DoubleConv( 8*L,   2*L, (3, 3), padding='same')
-    self.block8 = DoubleConv( 4*L,     L, (3, 3), padding='same')
-    self.block9 = DoubleConv( 2*L,     L, (3, 3), padding='same')
-    self.out = nn.Conv2d(       L, N_out, 1)
+    self.conv6 = nn.Conv2d(  8*L,  4096, 7, padding='same')
+    self.conv7 = nn.Conv2d( 4096,  4096, 1, padding='same')
+    self.score7 = nn.Conv2d(4096, N_out, 1, padding='same')
+    self.score4 = nn.Conv2d( 8*L, N_out, 1, padding='same')
+    self.score3 = nn.Conv2d( 4*L, N_out, 1, padding='same')
   
   def forward(self, x):
     x = self.normalize(x)
-    x_1 = self.block1(x)
-    x_2 = nn.MaxPool2d(2)(x_1)
-    x_2 = self.block2(x_2)
-    x_3 = nn.MaxPool2d(2)(x_2)
-    x_3 = self.block3(x_3)
-    x_4 = nn.MaxPool2d(2)(x_3)
-    x_4 = self.block4(x_4)
-    x = nn.MaxPool2d(2)(x_4)
-    x = self.block5(x)
+    x = self.block1(x)
+    x = nn.MaxPool2d(2)(x)
+    x = self.block2(x)
+    x = nn.MaxPool2d(2)(x)
+    x = self.block3(x)
+    x_3 = nn.MaxPool2d(2)(x)
+    x_4 = self.block4(x_3)
+    x_4 = nn.MaxPool2d(2)(x_4)
+    x = self.block5(x_4)
+    x = nn.MaxPool2d(2)(x)
+    x = self.conv6(x)
+    x = nn.ReLU(inplace=True)(x)
+    x = self.conv7(x)
+    x = nn.ReLU(inplace=True)(x)
+    x = self.score7(x)
     
     x = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)(x)
-    x = torch.cat((x_4, x), axis=1)
-    x = self.block6(x)
-    
+    x_4 = self.score4(x_4)
+    x = x + x_4
+
     x = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)(x)
-    x = torch.cat((x_3, x), axis=1)
-    x = self.block7(x)
+    x_3 = self.score3(x_3)
+    x = x + x_3
     
-    x = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)(x)
-    x = torch.cat((x_2, x), axis=1)
-    x = self.block8(x)
-    
-    x = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)(x)
-    x = torch.cat((x_1, x), axis=1)
-    x = self.block9(x)
-    x = self.out(x)
+    x = nn.Upsample(scale_factor=8, mode='bilinear', align_corners=True)(x)
     return x
 
 

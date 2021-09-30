@@ -248,9 +248,9 @@ def get_names(path):
 
 def sample_name(epoch, i):
   '''Name for sample labels.'''
-  return "epoch{}_{}.png".format(epoch, i)
+  return "fcn_epoch{}_{}.png".format(epoch, i)
 
 
 def checkpoint_name(epoch):
   '''Name for checkpoint weights.'''
-  return "unet_epoch{}.pth".format(epoch)
+  return "fcn_epoch{}.pth".format(epoch)
